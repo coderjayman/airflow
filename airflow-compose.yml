@@ -1,0 +1,134 @@
+version: "3.3"
+
+services:
+  redis:
+    image: redis:latest
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 30s
+      retries: 50
+    restart: always
+    ports:
+      - "6379:6379"
+
+  postgres-airflow:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_DB: airflow
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+    volumes:
+      - ./postgres_airfow:/var/lib/postgresql/data/
+
+  webserver:
+    image: apache/airflow:latest
+    restart: always
+    depends_on:
+      - postgres-airflow
+      - redis
+    environment:
+      AIRFLOW__CORE__EXECUTOR: "CeleryExecutor"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow:5432/airflow
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres-airflow/airflow
+      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/1
+      REDIS_PORT: 6379
+      EXECUTOR: Celery
+      GUNICORN_CMD_ARGS: --log-level WARNING
+    volumes:
+      - "./airflow/dags:/opt/airflow/dags"
+      - "./airflow/logs:/opt/airflow/logs"
+      - "./airflow/plugins:/opt/airflow/plugins"
+      - "./airflow/data:/opt/airflow/data"
+      - "./airflow/spool:/var/spool/airflow"
+    ports:
+      - 8080:8080
+      - 8888:8888
+    command: ["bash", "-c", "sleep 30 && airflow db init && airflow webserver"]
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /usr/local/airflow/airflow-webserver.pid ]"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+
+  flower:
+    image: apache/airflow:latest
+    restart: always
+    depends_on:
+      - redis
+    environment:
+      AIRFLOW__CORE__EXECUTOR: "CeleryExecutor"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow:5432/airflow
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres-airflow/airflow
+      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/1
+      REDIS_PORT: 6379
+      EXECUTOR: Celery
+      GUNICORN_CMD_ARGS: --log-level WARNING
+    ports:
+      - "5555:5555"
+    command:
+      - "celery"
+      - "flower"
+      
+  scheduler:
+    image: apache/airflow:latest
+    restart: always
+    depends_on:
+      - webserver
+    volumes:
+      - "./airflow/dags:/opt/airflow/dags"
+      - "./airflow/logs:/opt/airflow/logs"
+      - "./airflow/plugins:/opt/airflow/plugins"
+      - "./airflow/data:/opt/airflow/data"
+      - "./airflow/spool:/var/spool/airflow"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: "CeleryExecutor"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow:5432/airflow
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres-airflow/airflow
+      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/1
+      REDIS_PORT: 6379
+      EXECUTOR: Celery
+      GUNICORN_CMD_ARGS: --log-level WARNING
+    command:
+      - "scheduler"
+
+  worker:
+    image: apache/airflow:latest
+    restart: always
+    depends_on:
+      - scheduler
+    volumes:
+      - "./airflow/dags:/opt/airflow/dags"
+      - "./airflow/logs:/opt/airflow/logs"
+      - "./airflow/plugins:/opt/airflow/plugins"
+      - "./airflow/data:/opt/airflow/data"
+      - "./airflow/spool:/var/spool/airflow"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: "CeleryExecutor"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow:5432/airflow
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres-airflow/airflow
+      AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/1
+      REDIS_PORT: 6379
+      EXECUTOR: Celery
+      GUNICORN_CMD_ARGS: --log-level WARNING
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - 'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@localhost"'
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    command:
+      - "celery"
+      - "worker"
+
+volumes:
+  flower:
+  worker:
+  scheduler:
+  webserver:
+  postgres_data:
+    driver: local
+  airflow:
+    driver: local
