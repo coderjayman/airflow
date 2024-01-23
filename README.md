@@ -11,7 +11,7 @@ There is no SSL or encryption in the database.
 
 It's for your private playground to learn more about DAG files in Python.
 
-When you start this up you need to access the web application terminal and run:
+When you start this up you need to access the webserver service container terminal and run:
 
 airflow db init
 
@@ -21,7 +21,7 @@ Then after it creates all the database tables it will start asking for:
 
 airflow db migrate
 
-When you put a file in the local volume for DAG's just restart the container or run airflow db init again in the airflow container to reload the DAGS.
+When you put a file in the local volume for DAG's just restart the container or run airflow db init again in the webserver container to reload the DAGS.
 
 Well, that's all for now folks... have fun and remember happy coding!
 
