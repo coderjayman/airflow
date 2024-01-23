@@ -23,7 +23,11 @@ airflow db migrate
 
 When you put a file in the local volume for DAG's just restart the container or run airflow db init again in the webserver container to reload the DAGS.
 
+And where would we be without a Hello World Example?
+
 Well, that's all for now folks... have fun and remember happy coding!
+
+
 
 
 
