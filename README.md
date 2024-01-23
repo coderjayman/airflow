@@ -1,6 +1,8 @@
 # airflow
 Airflow Docker-Compose
 
+Also see: https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html
+
 USE AT YOUR OWN RISK. IF YOU DOWNLOAD AND USE THIS YOU ARE RESPONSIBLE.
 
 That being said...
